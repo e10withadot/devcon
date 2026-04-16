@@ -136,8 +136,8 @@ func create(args []string) {
     // printf "FROM %s\nRUN %s\n" "mcr.micrsoft.com/devcontainers/$repo:$version" "$DC_RUN" > .devcontainer/Dockerfile
     var dc_link string
     if compose {
-        os.WriteFile(pwd + "/compose.yml", []byte("services:\n\tmain:\n\t\timage: " + repo + ":" + version), 0666)
-        dc_link = "{ \"dockerComposeFile\": \"compose.yml\"\"service\": \"main\" }"
+        os.WriteFile(pwd + "/compose.yml", []byte("services:\n    main:\n        image: " + repo + ":" + version + "\n        command: sleep infinity"), 0666)
+        dc_link = "{ \"dockerComposeFile\": \"compose.yml\", \"service\": \"main\" }"
     } else {
         os.WriteFile(pwd + "/Dockerfile", []byte("FROM " + repo + ":" + version), 0666)
         dc_link = "{ \"build\": { \"dockerfile\": \"Dockerfile\" \"context\": \"..\" } }"
