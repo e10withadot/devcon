@@ -68,10 +68,12 @@ func create(args []string) {
             Value(&repo),
         ),
     )
-    form.Run()
+    if err = form.Run(); err != nil {
+        log.Fatal(err)
+    }
 
     // curl -s "https://mcr.microsoft.com/v2/devcontainers/${repo}/tags/list"
-    repo_name := strings.TrimPrefix(repo, "https://mcr.microsoft.com/devcontainers/")
+    repo_name := strings.TrimPrefix(repo, "mcr.microsoft.com/devcontainers/")
     if request, err = http.NewRequest("GET", "https://mcr.microsoft.com/v2/devcontainers/" + repo_name + "/tags/list", nil); err != nil {
         log.Fatal(err)
     }
@@ -88,20 +90,40 @@ func create(args []string) {
     if err := json.NewDecoder(response.Body).Decode(&tag_dict); err != nil {
         log.Fatal(err)
     }
+    def_tag := tag_dict.Tags[0]
     tag_opts := make([]huh.Option[string], 0)
     for _, tag := range tag_dict.Tags {
         tag_opts = append(tag_opts, huh.NewOption(tag, tag))
     }
-    var version string
+ 
+    var use_def bool
     form = huh.NewForm(
         huh.NewGroup(
-            huh.NewSelect[string]().
-            Title("Which version?").
-            Options(tag_opts...).
-            Value(&version),
+            huh.NewConfirm().
+            Title("Use the default version? (" + def_tag + ")").
+            Affirmative("Yes").
+            Negative("No").
+            Value(&use_def),
         ),
     )
-    form.Run()
+    if err = form.Run(); err != nil {
+        log.Fatal(err)
+    }
+
+    var version string
+    if use_def { version = def_tag } else {
+        form = huh.NewForm(
+            huh.NewGroup(
+                huh.NewSelect[string]().
+                Title("Which version?").
+                Options(tag_opts...).
+                Value(&version),
+            ),
+        )
+        if err = form.Run(); err != nil {
+            log.Fatal(err)
+        }
+    }
 
     // mkdir -p .devcontainer
     if err = os.Mkdir(pwd, 0750); err != nil && !os.IsExist(err) {
@@ -112,10 +134,10 @@ func create(args []string) {
     var dc_link string
     if compose {
         os.WriteFile(pwd + "/compose.yml", []byte("services:\n\tmain:\n\t\timage: " + repo + ":" + version), 0666)
-        dc_link = "{\n\t\"dockerComposeFile\": \"compose.yml\"\n\t\"service\": \"main\"\n}"
+        dc_link = "{ \"dockerComposeFile\": \"compose.yml\"\"service\": \"main\" }"
     } else {
         os.WriteFile(pwd + "/Dockerfile", []byte("FROM " + repo + ":" + version), 0666)
-        dc_link = "{\n\t\"build\": {\n\t\t\"dockerfile\": \"Dockerfile\"\n\t\t\"context\": \"..\"\n\t}\n}"
+        dc_link = "{ \"build\": { \"dockerfile\": \"Dockerfile\" \"context\": \"..\" } }"
     }
     os.WriteFile(pwd + "/devcontainer.json", []byte(dc_link), 0666)
     // DC_RUN="$(gum input --placeholder="Enter initial command...")"
