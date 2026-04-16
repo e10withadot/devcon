@@ -11,6 +11,9 @@ import (
 )
 
 func create(args []string) {
+    if len(args) < 1 {
+        log.Fatal("Path required.")
+    }
     pwd := args[0] + "/.devcontainer"
 
     // curl -s -H "Accept: application/vnd.github+json" "https://api.github.com/repos/devcontainers/images/git/trees/HEAD?recursive=1"

@@ -1,11 +1,15 @@
 package main
 
 import (
-    "os"
     "fmt"
+    "log"
+    "os"
 )
 
 func main() {
+    if len(os.Args) < 2 {
+        log.Fatal("Subcommand required.")
+    }
     cargs := os.Args[2:]
     switch cmd := os.Args[1]; cmd {
     case "create":
