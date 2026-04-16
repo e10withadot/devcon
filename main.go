@@ -15,7 +15,7 @@ func main() {
     case "create":
         create(cargs)
     case "up":
-        fmt.Println("Up command called!")
+        up(cargs)
     default:
         fmt.Println("Invalid command:", cmd)
     }
