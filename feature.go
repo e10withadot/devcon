@@ -14,7 +14,7 @@ func feature(args []string) {
     switch cmd := os.Args[1]; cmd {
     case "add":
         add(cargs)
-    case "rm":
+    case "rm", "remove":
         rm(cargs)
     default:
         fmt.Println("Invalid command:", cmd)
@@ -22,7 +22,13 @@ func feature(args []string) {
 }
 
 func add(args []string) {
+    if len(args) < 2 {
+        log.Fatal("Requires 2 arguments: [feature] [path]")
+    }
 }
 
 func rm(args []string) {
+    if len(args) < 2 {
+        log.Fatal("Requires 2 arguments: [feature] [path]")
+    }
 }
