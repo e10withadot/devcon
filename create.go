@@ -83,7 +83,7 @@ func create(args []string) {
         dc_link = "{ \"dockerComposeFile\": \"compose.yml\", \"service\": \"main\" }"
     } else {
         os.WriteFile(pwd + "/Dockerfile", []byte("FROM " + repo + ":" + version), 0666)
-        dc_link = "{ \"build\": { \"dockerfile\": \"Dockerfile\" \"context\": \"..\" } }"
+        dc_link = "{ \"build\": { \"dockerfile\": \"Dockerfile\", \"context\": \"..\" } }"
     }
     os.WriteFile(pwd + "/devcontainer.json", []byte(dc_link), 0666)
     // DC_RUN="$(gum input --placeholder="Enter initial command...")"
