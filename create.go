@@ -6,11 +6,20 @@ import (
     "net/http"
     "os"
     "strings"
+    "flag"
 
     huh "charm.land/huh/v2"
 )
 
 func create(args []string) {
+    fs := flag.NewFlagSet("create", flag.ExitOnError)
+    docker := fs.Bool("d", false, "Create Dockerfile for devcontainer.")
+    compose := fs.Bool("c", false, "Create Docker Compose YAML for devcontainer.")
+    if err := fs.Parse(args); err != nil {
+        log.Fatal("Could not parse flags.")
+    }
+
+    args = fs.Args()
     if len(args) < 1 {
         log.Fatal("Path required.")
     }
@@ -19,17 +28,8 @@ func create(args []string) {
     def_repo := "mcr.microsoft.com/devcontainers/"
     urls := get_container_urls("https://api.github.com/repos/devcontainers/images/git/trees/HEAD?recursive=1", def_repo)
 
-    var compose bool; var repo string
+    var repo string
     form := huh.NewForm(
-        huh.NewGroup(
-            huh.NewSelect[bool]().
-            Title("Which build file?").
-            Options(
-                huh.NewOption("Dockerfile", false),
-                huh.NewOption("Docker Compose", true),
-            ).
-            Value(&compose),
-        ),
         huh.NewGroup(
             huh.NewSelect[string]().
             Title("Which base devcontainer?").
@@ -77,16 +77,28 @@ func create(args []string) {
         log.Fatal(err)
     }
 
-    var dc_link string
-    if compose {
-        os.WriteFile(pwd + "/compose.yml", []byte("services:\n    main:\n        image: " + repo + ":" + version + "\n        command: sleep infinity"), 0666)
-        dc_link = "{ \"dockerComposeFile\": \"compose.yml\", \"service\": \"main\" }"
+    dc_json := map[string]any{}
+    image := repo + ":" + version
+    if *compose {
+        if *docker {
+            os.WriteFile(pwd + "/compose.yml", []byte("services:\n\tmain:\n\t\tbuild:\n\t\t\tcontext: ..\n\t\t\tdockerfile: ./Dockerfile"), 0666)
+            os.WriteFile(pwd + "/Dockerfile", []byte("FROM " + image), 0666)
+        } else {
+            os.WriteFile(pwd + "/compose.yml", []byte("services:\n    main:\n        image: " + image), 0666)
+        }
+        dc_json["dockerComposeFile"] = "compose.yml"
+        dc_json["service"] = "main"
+    } else if !*compose && *docker {
+        os.WriteFile(pwd + "/Dockerfile", []byte("FROM " + image), 0666)
+        dc_json["build"] = map[string]any{ "dockerfile": "Dockerfile", "context": ".." }
     } else {
-        os.WriteFile(pwd + "/Dockerfile", []byte("FROM " + repo + ":" + version), 0666)
-        dc_link = "{ \"build\": { \"dockerfile\": \"Dockerfile\", \"context\": \"..\" } }"
+        dc_json["image"] = image
     }
-    os.WriteFile(pwd + "/devcontainer.json", []byte(dc_link), 0666)
-    // DC_RUN="$(gum input --placeholder="Enter initial command...")"
+    var data []byte; var err error
+    if data, err = json.MarshalIndent(&dc_json, "", "   "); err != nil {
+        log.Fatal("Devcon could not reformat into json. Please report this error.")
+    }
+    os.WriteFile(pwd + "/devcontainer.json", data, 0666)
 }
 
 func get_container_urls(repo string, image_repo string) []huh.Option[string] {
